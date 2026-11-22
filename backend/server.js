@@ -724,11 +724,19 @@ async function boot() {
     effortProvider: () => ({ variant: currentEffort }),
   });
 
-  const httpServer = app.listen(config.port, config.host, () => {
-    log.info(`ZENITH is listening on http://localhost:${config.port}`);
+  // Express's app.listen() callback FIRES even when the bind fails — the
+  // real truth is the "listening"/"error" events on the http server, which
+  // bindOrThrow below waits on.
+  const httpServer = app.listen(config.port, config.host);
+  httpServer.on("listening", () => {
+    log.info(`ZENITH is listening on http://localhost:${httpServer.address()?.port ?? config.port}`);
     log.info(`Brain: ${config.llm.provider} / ${config.llm.model} ${llmReady(config) ? "(ready)" : "(NOT configured — chat unavailable)"}`);
     log.info(`Voice: ${voiceReady(config) ? "ElevenLabs configured" : "local fallback"} | STT: ${sttReady(config) ? "server-side " + config.stt.model : "browser fallback"}`);
   });
+
+  // Wait until the port is actually bound or the bind failed — callers
+  // (notably tests and the direct-run boot path) must see the truth.
+  await bindOrThrow(httpServer, config);
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws/voice" });
   wss.on("connection", (ws, req) => {
@@ -797,6 +805,30 @@ async function boot() {
   process.on("SIGTERM", shutdown);
 
   return { app, httpServer, wss, brain, memoryStore, conversationStore, scheduler, profileStore };
+}
+
+// Resolve once the port is bound, or throw a clear error. Callers must see
+// the truth — never a process that reports "listening" while the port is taken.
+function bindOrThrow(httpServer, config) {
+  return new Promise((resolve, reject) => {
+    const watchdog = setTimeout(() => {
+      reject(new Error("listening watchdog expired — port did not bind"));
+    }, 10_000);
+    httpServer.once("listening", () => {
+      clearTimeout(watchdog);
+      resolve();
+    });
+    httpServer.once("error", (err) => {
+      clearTimeout(watchdog);
+      reject(
+        new Error(
+          err?.code === "EADDRINUSE"
+            ? `Port ${config.port} is already in use — stop the other process or set ZENITH_PORT in .env.`
+            : `Could not bind ${config.host}:${config.port} — ${err?.message || err}`
+        )
+      );
+    });
+  });
 }
 
 const started = { ok: false };

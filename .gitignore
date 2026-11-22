@@ -15,3 +15,6 @@ Thumbs.db
 
 # Original Drive project snapshot — kept on disk for reference, never committed
 google_drive/
+
+# Build artifacts
+zenith-project.zip
