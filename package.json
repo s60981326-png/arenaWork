@@ -1,0 +1,19 @@
+{
+  "name": "zenith",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ZENITH \u2014 a real, persistent, voice-first personal AI companion",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node backend/server.js",
+    "setup": "npm install",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "ws": "^8.22.2"
+  }
+}
