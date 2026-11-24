@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Secrets — never committed
+.env
+secrets/
+
+# Runtime data — user memory, settings, profile, sessions (never committed)
+data/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# Original Drive project snapshot — kept on disk for reference, never committed
+google_drive/
+
+# Build artifacts
+zenith-project.zip

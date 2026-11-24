@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZENITH</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Companion stage: full-screen voice-first experience -->
+  <div id="companion">
+    <div class="companion-bg" id="companionBg">
+      <img id="companionArt" src="/images/zenith-portrait.png" alt="ZENITH" draggable="false" />
+    </div>
+
+    <header class="companion-top">
+      <div class="brand">ZENITH</div>
+      <span id="voiceLabel" class="voice-label" title="Which voice is speaking right now">Voice: …</span>
+      <div class="status" id="statusDot">
+        <span class="dot" id="dot"></span>
+        <span id="statusText">connecting…</span>
+      </div>
+      <button id="fullscreenBtn" class="ghost" title="Enter full-screen">⛶ Full-screen</button>
+      <button id="transcriptBtn" class="ghost" title="Show the conversation transcript and typing">Chat &amp; transcript</button>
+      <button id="memoryBtn" class="ghost" title="See, add, edit, or delete what ZENITH remembers">Memory</button>
+      <button id="profileBtn" class="ghost" title="Your personal profile (editable, kept on this computer)">Profile</button>
+      <button id="scheduleBtn" class="ghost" title="Reminders and daily check-ins">Reminders</button>
+      <button id="settingsBtn" class="ghost" title="ElevenLabs voice settings and what model ZENITH uses">Settings</button>
+    </header>
+
+    <main class="companion-center">
+      <div class="companion-state" id="faceStateLabel">idle</div>
+      <div class="companion-captions" id="captions" aria-live="polite">
+        <span id="captionText"></span>
+      </div>
+      <div class="companion-controls">
+        <button id="bigMic" class="mic-orb" title="Tap to listen hands-free; tap again to stop">
+          <span class="mic-orb-icon" id="bigMicIcon">🎙</span>
+        </button>
+        <button id="stopSpeak" class="warn" hidden>Stop speaking</button>
+      </div>
+      <div class="companion-typehint">Tap the mic (top left) and just talk. Typing lives in <b>Chat &amp; transcript</b>.</div>
+    </main>
+  </div>
+
+  <!-- Transcript / typing drawer (secondary) -->
+  <aside id="chatDrawer" hidden>
+    <div class="drawer-head">
+      <span>Conversation</span>
+      <div class="drawer-head-actions">
+        <button id="selectBtn" class="small ghost" title="Pick messages and save a note from them to memory">Select</button>
+        <button id="chatCloseBtn" class="small ghost" title="Close panel (Esc)">✕</button>
+      </div>
+    </div>
+    <div id="messages"></div>
+    <div id="selectBar" class="select-bar" hidden>
+      <span id="selectCount">0 selected</span>
+      <button id="selectReview" class="small">Review note</button>
+      <button id="selectCancel" class="small ghost">Cancel</button>
+    </div>
+    <div id="selectEditor" class="select-editor" hidden>
+      <label for="selectNote">Edit the note before saving it to memory</label>
+      <textarea id="selectNote" rows="5"></textarea>
+      <select id="selectType">
+        <option>user-approved fact</option>
+        <option>preference</option>
+        <option>goal</option>
+        <option>temporary state</option>
+        <option>lesson</option>
+      </select>
+      <div id="selectWarn" class="note"></div>
+      <div class="select-editor-actions">
+        <button id="selectBack" class="small ghost">Back to selection</button>
+        <button id="selectSave" class="small">Save to memory</button>
+      </div>
+    </div>
+    <div id="memoryChip" hidden>
+      <span>Save to memory:</span>
+      <code id="memoryChipText"></code>
+      <button id="memoryChipSave" class="small">Save</button>
+      <button id="memoryChipDrop" class="small ghost">Not now</button>
+    </div>
+    <form id="composer">
+      <textarea id="input" rows="1" placeholder="Type to ZENITH…" autocomplete="off"></textarea>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </aside>
+
+  <!-- ElevenLabs failure banner — visible, never silent -->
+  <div id="elBanner" class="el-banner" hidden>
+    <span class="el-banner-msg"></span>
+    <button id="elBannerRetry" class="small" hidden>Retry ElevenLabs</button>
+    <button id="elBannerClose" class="small ghost">Dismiss</button>
+  </div>
+
+  <aside id="memoryPanel" hidden>
+    <div class="drawer-head panel-head-bar">
+      <span>Memory</span>
+      <button id="memoryCloseBtn" class="small ghost panel-close" title="Close panel (Esc)">✕</button>
+    </div>
+    <div class="panel-head">
+      <h2>What ZENITH remembers</h2>
+      <p>Everything here lives in <code>data/memory.json</code> on your own computer. You can add, edit, or delete anything — nothing here is hidden, and this is memory, not retraining.</p>
+    </div>
+    <form id="memoryAdd">
+      <input id="memoryText" type="text" placeholder="Something to remember…" />
+      <select id="memoryType">
+        <option>user-approved fact</option>
+        <option>preference</option>
+        <option>goal</option>
+        <option>temporary state</option>
+        <option>lesson</option>
+      </select>
+      <button type="submit">Add</button>
+    </form>
+    <ul id="memoryList"></ul>
+  </aside>
+
+  <aside id="profilePanel" hidden>
+    <div class="drawer-head panel-head-bar">
+      <span>Personal profile</span>
+      <button id="profileCloseBtn" class="small ghost panel-close" title="Close panel (Esc)">✕</button>
+    </div>
+    <div class="panel-head">
+      <h2>Your profile</h2>
+      <p>Everything here lives in <code>data/profile.md</code> on your own computer — read it, edit it, or trim it freely. It is imported from your mentorship profile PDF (November 2026), so the salary, budget, investment, schedule and habit entries are <b>dated snapshots, not guaranteed current facts</b>; personality notes are provisional observations, not permanent labels.</p>
+      <p class="note privacy-note"><b>Where this goes:</b> ZENITH's replies are written by your configured AI brain (any OpenAI-compatible provider in .env). When your message touches a topic in this profile, ZENITH sends <b>only the relevant sections</b> to the brain so the reply can use them. Small talk sends nothing. Editing or trimming this file always changes what can be sent.</p>
+    </div>
+    <div class="profile-edit">
+      <textarea id="profileText" rows="18" spellcheck="false" placeholder="Loading profile…"></textarea>
+      <div id="profileWarn" class="note"></div>
+      <button id="profileSave" type="button">Save changes</button>
+    </div>
+  </aside>
+
+  <aside id="schedulePanel" hidden>
+    <div class="drawer-head panel-head-bar">
+      <span>Reminders</span>
+      <button id="scheduleCloseBtn" class="small ghost panel-close" title="Close panel (Esc)">✕</button>
+    </div>
+    <div class="panel-head">
+      <h2>Reminders &amp; check-ins</h2>
+      <p>Reminders fire <b>while ZENITH is running</b> — they appear here and ZENITH says them out loud if voice mode is on. They do <b>not</b> buzz your phone or work when the app is closed.</p>
+    </div>
+
+    <div class="panel-head">
+      <h2>Daily check-ins <span class="badge">optional</span></h2>
+      <p>Two set times for the morning and evening conversation with ZENITH.</p>
+    </div>
+    <form id="checkinForm" class="checkin-form">
+      <label class="toggle">
+        <input type="checkbox" id="checkinEnabled" />
+        <span>Enable check-ins</span>
+      </label>
+      <label>Morning <input type="time" id="checkinMorning" value="08:00" /></label>
+      <label>Evening <input type="time" id="checkinEvening" value="21:00" /></label>
+      <button type="submit">Save times</button>
+    </form>
+    <div id="checkinStatus" class="checkin-status"></div>
+    <div id="checkinWarn" class="note"></div>
+
+    <div class="panel-head">
+      <h2>Reminders</h2>
+      <p>One-off, daily, or weekly. ZENITH speaks reminders as they come due.</p>
+    </div>
+    <form id="reminderForm" class="checkin-form">
+      <input id="reminderName" type="text" placeholder="e.g. Drink water, stand up, call mom" />
+      <select id="reminderKind">
+        <option value="once">Once (date + time)</option>
+        <option value="daily">Daily (time)</option>
+        <option value="weekly">Weekdays (time)</option>
+      </select>
+      <input id="reminderTime" type="time" />
+      <input id="reminderDate" type="date" />
+      <button type="submit" id="reminderSubmitBtn">Add reminder</button>
+      <button type="button" id="reminderCancelEditBtn" class="small ghost" hidden>Cancel edit</button>
+    </form>
+    <div id="reminderWarn" class="note"></div>
+    <ul id="reminderList"></ul>
+  </aside>
+
+  <aside id="settingsPanel" hidden>
+    <div class="drawer-head panel-head-bar">
+      <span>Settings</span>
+      <button id="settingsCloseBtn" class="small ghost panel-close" title="Close panel (Esc)">✕</button>
+    </div>
+    <div class="panel-head">
+      <h2>Voice &amp; model</h2>
+      <p>ZENITH's <b>brain</b> never changes when you switch voices.</p>
+    </div>
+    <div id="brainBox" class="brain-box">Loading…</div>
+
+    <div class="panel-head">
+      <h2>Brain &amp; effort</h2>
+      <p>ZENITH always reasons with your configured brain. Effort controls how long it thinks before it answers.</p>
+    </div>
+    <div id="effortBox" class="brain-box">Loading…</div>
+    <div class="effort-row" id="effortRow">
+      <button type="button" class="small ghost" data-variant="low">Low</button>
+      <button type="button" class="small ghost" data-variant="medium">Medium</button>
+      <button type="button" class="small ghost" data-variant="high">High</button>
+    </div>
+
+    <div class="panel-head">
+      <h2>ElevenLabs voice <span class="badge">optional</span></h2>
+      <p>ElevenLabs is the <b>voice</b> only. Your brain still writes every reply.</p>
+    </div>
+    <div id="elStatus" class="el-status">Loading…</div>
+    <div id="elVoices" class="el-voices"></div>
+  </aside>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
